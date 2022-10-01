@@ -73,15 +73,17 @@ class MainActivity : AppCompatActivity() {
                     coordinator.imageDropped(eventX, eventY)
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    cursorImage.x = event.x - 100f
-                    cursorImage.y = event.y - 100f
-                    val hoverOverImage = getImageViewAt(eventX, eventY)
-                    imageViews.filter {
-                        it.tag != viewModel.draggingIndex.value
-                        && it.tag != viewModel.hoverImageIndex.value
-                    }.forEach { it.clearColorFilter() }
-                    if (hoverOverImage?.tag?.equals(viewModel.hoverImageIndex.value) == false) {
-                        coordinator.updateHoverImage(hoverOverImage.tag as Int, eventX, eventY)
+                    if (viewModel.draggingIndex.value != null) {
+                        cursorImage.x = event.x - 100f
+                        cursorImage.y = event.y - 100f
+                        val hoverOverImage = getImageViewAt(eventX, eventY)
+                        imageViews.filter {
+                            it.tag != viewModel.draggingIndex.value
+                                    && it.tag != viewModel.hoverImageIndex.value
+                        }.forEach { it.clearColorFilter() }
+                        if (hoverOverImage?.tag?.equals(viewModel.hoverImageIndex.value) == false) {
+                            coordinator.updateHoverImage(hoverOverImage.tag as Int, eventX, eventY)
+                        }
                     }
                 }
             }
