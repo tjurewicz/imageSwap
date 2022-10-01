@@ -1,0 +1,8 @@
+<component name="CopyrightManager">
+  <settings>
+    <LanguageOptions name="__TEMPLATE__">
+      <option name="separateAfter" value="true" />
+      <option name="lenAfter" value="160" />
+    </LanguageOptions>
+  </settings>
+</component>
