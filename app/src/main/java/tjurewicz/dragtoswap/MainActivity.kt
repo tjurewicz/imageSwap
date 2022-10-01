@@ -1,10 +1,8 @@
 package tjurewicz.dragtoswap
 
 import android.animation.AnimatorInflater
-import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.MotionEvent
@@ -33,11 +31,6 @@ class MainActivity : AppCompatActivity() {
 
     private val imageViews: List<ImageView> by lazy { listOf(image1, image2, image3, image4) }
     private val cursorImage: ShapeableImageView by lazy { cursor }
-    private val purpleHSV = FloatArray(3).apply {
-        this[0] = 269.0f
-        this[1] = 0.7f
-        this[2] = 0.63f
-    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,10 +76,11 @@ class MainActivity : AppCompatActivity() {
                     cursorImage.x = event.x - 100f
                     cursorImage.y = event.y - 100f
                     val hoverOverImage = getImageViewAt(eventX, eventY)
-                    imageViews.filter { it.tag != viewModel.draggingIndex.value && it.tag != viewModel.hoverImageIndex.value }
-                        .forEach { it.clearColorFilter() }
-                    if (hoverOverImage?.tag?.equals(viewModel.hoverImageIndex.value) == false
-                    ) {
+                    imageViews.filter {
+                        it.tag != viewModel.draggingIndex.value
+                        && it.tag != viewModel.hoverImageIndex.value
+                    }.forEach { it.clearColorFilter() }
+                    if (hoverOverImage?.tag?.equals(viewModel.hoverImageIndex.value) == false) {
                         coordinator.updateHoverImage(hoverOverImage.tag as Int, eventX, eventY)
                     }
                 }
@@ -106,33 +100,16 @@ class MainActivity : AppCompatActivity() {
     private fun grabImage(eventX: Int, eventY: Int) {
         val sourceImage = getImageViewAt(eventX, eventY)
         animateColorFilter(
-            image = sourceImage,
-            Color.TRANSPARENT,
-            Color.HSVToColor(100, purpleHSV)
+            image = sourceImage
         )
     }
 
     private fun hoverImage(eventX: Int, eventY: Int) {
         val image = getImageViewAt(eventX, eventY)
-        if (image?.tag?.equals(viewModel.draggingIndex) == false)
+        if (image?.tag?.equals(viewModel.draggingIndex.value) == false)
             animateColorFilter(
-                image = viewModel.hoverImageIndex.value?.let { imageViews[it] },
-                Color.TRANSPARENT,
-                Color.HSVToColor(100, purpleHSV)
+                image = viewModel.hoverImageIndex.value?.let { imageViews[it] }
             )
-    }
-
-    private fun animateColorFilter(image: ImageView?, vararg colorValues: Int) {
-        val anim = ValueAnimator()
-        anim.setIntValues(colorValues.first(), colorValues.last())
-        anim.setEvaluator(ArgbEvaluator())
-        anim.addUpdateListener { valueAnimator ->
-            image?.setColorFilter(
-                valueAnimator.animatedValue as Int
-            )
-        }
-        anim.duration = 0
-        anim.start()
     }
 
     private fun dropImage(eventX: Int, eventY: Int) {
@@ -141,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         val targetImageIndex = targetImage?.let { it.tag as Int }
         if (targetImageIndex != null && sourceImageIndex != null && targetImageIndex != sourceImageIndex) {
             animateSwap(targetImage)
-            animateFade(imageViews[sourceImageIndex], targetImage)
+            animateFade(imageViews[sourceImageIndex])
             coordinator.swapImages(sourceImageIndex, targetImageIndex)
         } else {
             coordinator.cancelSwap()
@@ -149,7 +126,20 @@ class MainActivity : AppCompatActivity() {
         imageViews.forEach { it.clearColorFilter() }
     }
 
-    private fun animateFade(sourceImage: ImageView, targetImage: ImageView) {
+    private fun animateColorFilter(image: ImageView?) {
+        val anim = AnimatorInflater.loadAnimator(this, R.animator.color_filter) as ValueAnimator
+        anim.apply {
+            duration = 300
+            addUpdateListener { valueAnimator ->
+                image?.setColorFilter(
+                    valueAnimator.animatedValue as Int
+                )
+            }
+            start()
+        }
+    }
+
+    private fun animateFade(sourceImage: ImageView) {
         val fadeIn = AnimatorInflater.loadAnimator(this, R.animator.fade_in) as ValueAnimator
         fadeIn.apply {
             addUpdateListener { animation ->
@@ -161,8 +151,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun animateSwap(imageView: ImageView) {
-        val animation =
-            AnimatorInflater.loadAnimator(this, R.animator.swap_animation) as ValueAnimator
+        val animation = AnimatorInflater.loadAnimator(this, R.animator.swap) as ValueAnimator
         animation.apply {
             addUpdateListener { animation ->
                 val animatedValue = animation.animatedValue as Float
