@@ -129,7 +129,7 @@ class MainActivity : AppCompatActivity() {
     private fun animateColorFilter(image: ImageView?) {
         val anim = AnimatorInflater.loadAnimator(this, R.animator.color_filter) as ValueAnimator
         anim.apply {
-            duration = 300
+            duration = 250
             addUpdateListener { valueAnimator ->
                 image?.setColorFilter(
                     valueAnimator.animatedValue as Int
