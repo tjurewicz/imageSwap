@@ -101,17 +101,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun grabImage(eventX: Int, eventY: Int) {
         val sourceImage = getImageViewAt(eventX, eventY)
-        animateColorFilter(
-            image = sourceImage
-        )
+        animateColorFilter(sourceImage)
     }
 
     private fun hoverImage(eventX: Int, eventY: Int) {
         val image = getImageViewAt(eventX, eventY)
         if (image?.tag?.equals(viewModel.draggingIndex.value) == false)
-            animateColorFilter(
-                image = viewModel.hoverImageIndex.value?.let { imageViews[it] }
-            )
+            animateColorFilter(viewModel.hoverImageIndex.value?.let { imageViews[it] })
     }
 
     private fun dropImage(eventX: Int, eventY: Int) {
@@ -129,8 +125,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun animateColorFilter(image: ImageView?) {
-        val anim = AnimatorInflater.loadAnimator(this, R.animator.color_filter) as ValueAnimator
-        anim.apply {
+        val colorFilter = AnimatorInflater.loadAnimator(this, R.animator.color_filter) as ValueAnimator
+        colorFilter.apply {
             duration = 250
             addUpdateListener { valueAnimator ->
                 image?.setColorFilter(
@@ -153,8 +149,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun animateSwap(imageView: ImageView) {
-        val animation = AnimatorInflater.loadAnimator(this, R.animator.swap) as ValueAnimator
-        animation.apply {
+        val swap = AnimatorInflater.loadAnimator(this, R.animator.swap) as ValueAnimator
+        swap.apply {
             addUpdateListener { animation ->
                 val animatedValue = animation.animatedValue as Float
                 imageView.alpha = animatedValue
