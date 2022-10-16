@@ -3,4 +3,5 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:valueTo="@color/purple"
     android:valueType="colorType"
+    android:duration="250"
     android:interpolator="@android:anim/accelerate_interpolator"/>

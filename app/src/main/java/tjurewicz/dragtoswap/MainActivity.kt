@@ -3,10 +3,13 @@ package tjurewicz.dragtoswap
 import android.animation.AnimatorInflater
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.graphics.Matrix
 import android.graphics.Rect
+import android.opengl.Visibility
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.BounceInterpolator
 import android.widget.ImageView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -19,7 +22,6 @@ import kotlinx.android.synthetic.main.content_scrolling.*
 import tjurewicz.dragtoswap.MainActivityCoordinator.Events.ImageDropped
 import tjurewicz.dragtoswap.MainActivityCoordinator.Events.ImageHover
 import tjurewicz.dragtoswap.MainActivityCoordinator.Events.ImageSelected
-
 
 /**
  * Place for applying view data to views, and passing actions to coordinator
@@ -57,32 +59,34 @@ class MainActivity : AppCompatActivity() {
             val eventY = event.y.toInt()
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> { // Hunt for what's under the drag and start dragging
-                    cursorImage.x = event.x - 100f
-                    cursorImage.y = event.y - 100f
+                    cursorImage.x = event.x - CURSOR_BUFFER
+                    cursorImage.y = event.y - CURSOR_BUFFER
                     getImageViewAt(eventX, eventY)?.let {
                         val index = it.tag as Int
                         Glide.with(this)
                             .load(viewModel.images.value?.get(index)?.imageUrl)
                             .into(cursorImage)
                         cursorImage.visibility = View.VISIBLE
+                        animateBounceIn(cursorImage)
                         coordinator.startedSwap(index, eventX, eventY)
                     }
                 }
                 MotionEvent.ACTION_UP -> { // If we are dragging to something valid, do the swap
-                    cursorImage.visibility = View.GONE
                     coordinator.imageDropped(eventX, eventY)
                 }
                 MotionEvent.ACTION_MOVE -> {
                     if (viewModel.draggingIndex.value != null) {
-                        cursorImage.x = event.x - 100f
-                        cursorImage.y = event.y - 100f
+                        cursorImage.x = event.x - CURSOR_BUFFER
+                        cursorImage.y = event.y - CURSOR_BUFFER
                         val hoverOverImage = getImageViewAt(eventX, eventY)
                         imageViews.filter {
                             it.tag != viewModel.draggingIndex.value
                                     && it.tag != viewModel.hoverImageIndex.value
                         }.forEach { it.clearColorFilter() }
-                        if (hoverOverImage?.tag?.equals(viewModel.hoverImageIndex.value) == false) {
-                            coordinator.updateHoverImage(hoverOverImage.tag as Int, eventX, eventY)
+                        hoverOverImage?.tag?.let {
+                            if (it != viewModel.hoverImageIndex.value) {
+                                coordinator.updateHoverImage(hoverOverImage.tag as Int, eventX, eventY)
+                            }
                         }
                     }
                 }
@@ -115,47 +119,71 @@ class MainActivity : AppCompatActivity() {
         val targetImage = getImageViewAt(eventX, eventY)
         val targetImageIndex = targetImage?.let { it.tag as Int }
         if (targetImageIndex != null && sourceImageIndex != null && targetImageIndex != sourceImageIndex) {
+            animateTranslateCursorToTargetImage(targetImage)
+            targetImage.visibility = View.INVISIBLE
             animateSwap(targetImage)
-            animateFade(imageViews[sourceImageIndex])
+            animateFadeIn(imageViews[sourceImageIndex])
             coordinator.swapImages(sourceImageIndex, targetImageIndex)
         } else {
+            cursorImage.visibility = View.GONE
             coordinator.cancelSwap()
         }
         imageViews.forEach { it.clearColorFilter() }
     }
 
-    private fun animateColorFilter(image: ImageView?) {
-        val colorFilter = AnimatorInflater.loadAnimator(this, R.animator.color_filter) as ValueAnimator
-        colorFilter.apply {
-            duration = 250
-            addUpdateListener { valueAnimator ->
-                image?.setColorFilter(
-                    valueAnimator.animatedValue as Int
-                )
-            }
+    private fun animateTranslateCursorToTargetImage(targetImage: ImageView) {
+        val x = targetImage.pivotX
+        val y = targetImage.y + (targetImage.height / 2)
+        cursorImage.animate().apply {
+            translationX(x - CURSOR_BUFFER_HALF)
+            translationY(y - CURSOR_BUFFER)
+            duration = ANIMATION_DURATION_MEDIUM
             start()
         }
     }
 
-    private fun animateFade(sourceImage: ImageView) {
+    private fun animateColorFilter(image: ImageView?) {
+        val colorFilter = AnimatorInflater.loadAnimator(this, R.animator.color_filter) as ValueAnimator
+        colorFilter.apply {
+            addUpdateListener { animation -> image?.setColorFilter(animation.animatedValue as Int) }
+            start()
+        }
+    }
+
+    private fun animateFadeIn(image: ImageView) {
         val fadeIn = AnimatorInflater.loadAnimator(this, R.animator.fade_in) as ValueAnimator
         fadeIn.apply {
             addUpdateListener { animation ->
                 val animatedValue = animation.animatedValue as Float
-                sourceImage.alpha = animatedValue
+                image.alpha = animatedValue
             }
             start()
         }
     }
 
-    private fun animateSwap(imageView: ImageView) {
+    private fun animateSwap(image: ImageView) {
         val swap = AnimatorInflater.loadAnimator(this, R.animator.swap) as ValueAnimator
         swap.apply {
             addUpdateListener { animation ->
+                image.visibility = View.VISIBLE
+                cursorImage.visibility = View.GONE
                 val animatedValue = animation.animatedValue as Float
-                imageView.alpha = animatedValue
-                imageView.scaleX = animatedValue
-                imageView.scaleY = animatedValue
+                image.scaleX = animatedValue
+                image.scaleY = animatedValue
+                imageViews.forEach { it.clearColorFilter() } // Just in case it wasn't cleared the first time
+            }
+            startDelay = ANIMATION_DURATION_MEDIUM
+            start()
+        }
+    }
+
+    private fun animateBounceIn(image: ImageView) {
+        val bounce = AnimatorInflater.loadAnimator(this, R.animator.bounce_in) as ValueAnimator
+        bounce.apply {
+            addUpdateListener { animation ->
+                val animatedValue = animation.animatedValue as Float
+                image.scaleX = animatedValue
+                image.scaleY = animatedValue
             }
             start()
         }
@@ -167,6 +195,12 @@ class MainActivity : AppCompatActivity() {
             it.getHitRect(hitRect)
             hitRect.contains(x, y)
         }
+    }
+
+    companion object {
+        private const val CURSOR_BUFFER = 100F
+        private const val CURSOR_BUFFER_HALF = CURSOR_BUFFER / 2
+        private const val ANIMATION_DURATION_MEDIUM = 350L
     }
 
 }
